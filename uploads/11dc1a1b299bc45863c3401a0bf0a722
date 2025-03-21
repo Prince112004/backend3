@@ -1,0 +1,10 @@
+Category,Gender,2023-24 Usual Status,2023-24 CWS,2022-23 Usual Status,2022-23 CWS,2021-22 Usual Status,2021-22 CWS
+Rural,Male,57.9,56.7,55.5,54.5,56.9,55.7
+Rural,Female,35.5,29.6,30.5,25.4,27.2,21.7
+Rural,Person,46.8,43.2,43.4,40.4,42.2,38.9
+Urban,Male,59.0,58.5,58.3,57.9,58.3,57.9
+Urban,Female,22.3,20.8,20.2,19.1,18.8,17.5
+Urban,Person,41.0,40.0,39.8,39.0,39.0,38.2
+Rural+Urban,Male,58.2,57.3,56.2,55.4,57.3,56.3
+Rural+Urban,Female,31.7,27.1,27.8,23.7,24.8,20.5
+Rural+Urban,Person,45.1,42.3,42.4,40.0,41.3,38.7
