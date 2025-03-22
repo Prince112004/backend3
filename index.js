@@ -8,34 +8,38 @@ import pkg from 'pg';
 
 const { Pool } = pkg;
 
+// Load environment variables from .env file
 try {
     dotenv.config();
 } catch (error) {
     console.error('Error loading environment variables:', error);
 }
 
+// Create PostgreSQL Pool Connection using environment variables
 const pool = new Pool({
     user: process.env.DBUSER,
     host: process.env.DBHOST,
     database: process.env.DBNAME,
     password: process.env.DBPASSWORD,
     port: process.env.DBPORT || 5432,
-  });
-  
+});
+
 const app = express();
 
+// Use body parser middleware for form data
 const PORT = process.env.PORT || 3000;
-
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Serve a simple hello world route
 app.get('/', (req, res) => {
     res.send('Hello, World!');
 });
 
+// Set up Multer to handle file uploads
 const upload = multer({ dest: "uploads/" });
 
-// Function to create a table dynamically based on CSV headers
+// Function to dynamically create a table from CSV headers
 const createTableFromCsv = async (filePath, tableName) => {
     return new Promise((resolve, reject) => {
         const stream = fs.createReadStream(filePath);
@@ -45,14 +49,14 @@ const createTableFromCsv = async (filePath, tableName) => {
             .parse({ headers: true })
             .on("headers", async (cols) => {
                 headers = cols.map(col => col.replace(/\s+/g, "_").toLowerCase()); // Normalize column names
-                csvStream.pause(); // Pause stream while we create the table
+                csvStream.pause(); // Pause the stream while we create the table
 
                 const client = await pool.connect();
                 try {
-                    // Drop table if exists (optional, for testing purposes)
+                    // Drop the table if it exists (for testing purposes)
                     await client.query(`DROP TABLE IF EXISTS ${tableName};`);
 
-                    // Create table dynamically
+                    // Create the table dynamically based on CSV headers
                     const columns = headers.map(header => `${header} TEXT`).join(", ");
                     const createTableQuery = `CREATE TABLE ${tableName} (id SERIAL PRIMARY KEY, ${columns});`;
                     await client.query(createTableQuery);
@@ -63,7 +67,7 @@ const createTableFromCsv = async (filePath, tableName) => {
                     reject(error);
                 } finally {
                     client.release();
-                    csvStream.resume(); // Resume processing
+                    csvStream.resume(); // Resume CSV stream processing
                 }
             })
             .on("error", (error) => reject(error))
@@ -94,11 +98,12 @@ const importCsvToDb = async (filePath, tableName, headers) => {
                 try {
                     await client.query("BEGIN");
 
-                    // Construct dynamic insert query
+                    // Construct the dynamic insert query
                     const columns = headers.join(", ");
                     const placeholders = headers.map((_, i) => `$${i + 1}`).join(", ");
                     const insertQuery = `INSERT INTO ${tableName} (${columns}) VALUES (${placeholders});`;
 
+                    // Insert all rows into the database
                     for (const row of csvData) {
                         await client.query(insertQuery, row);
                     }
@@ -112,7 +117,7 @@ const importCsvToDb = async (filePath, tableName, headers) => {
                     reject(err);
                 } finally {
                     client.release();
-                    fs.unlinkSync(filePath); // Remove file after processing
+                    fs.unlinkSync(filePath); // Remove the file after processing
                 }
             })
             .on("error", (error) => reject(error));
@@ -121,16 +126,21 @@ const importCsvToDb = async (filePath, tableName, headers) => {
     });
 };
 
-// File upload API
+// File upload route
 app.post("/upload", upload.single("file"), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
     }
-    console.log(req.file)
-  
-    const {tableName} = req.body; // Change this as needed
     
+    console.log(req.file);
+    const { tableName } = req.body; // Retrieve the table name from the form data
+    
+    if (!tableName) {
+        return res.status(400).json({ message: "Table name is required" });
+    }
+
     try {
+        // Create table and import CSV data
         const headers = await createTableFromCsv(req.file.path, tableName);
         await importCsvToDb(req.file.path, tableName, headers);
         res.json({ message: "CSV imported successfully" });
@@ -138,6 +148,8 @@ app.post("/upload", upload.single("file"), async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// Start the server
 try {
     app.listen(PORT, () => {
         console.log(`Server is running on http://localhost:${PORT}`);
